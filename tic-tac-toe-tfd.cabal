@@ -1,6 +1,6 @@
 name:                tic-tac-toe-tfd
 version:             0.1.0.0
-synopsis:            Initial project template from stack
+synopsis:            TicTacToe in Haskell, Enterprise Edition (inspired by https://fsharpforfunandprofit.com/posts/enterprise-tic-tac-toe/#series-toc)
 description:         Please see README.md
 homepage:            https://github.com/githubuser/tic-tac-toe-tfd#readme
 license:             BSD3
@@ -15,7 +15,14 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.TicTacToe
+  exposed-modules:     TicTacToe.Data.Board
+                     , TicTacToe.Data.Cell
+                     , TicTacToe.Data.Move
+                     , TicTacToe.Data.Token
+                     , TicTacToe.Game
+                     , TicTacToe.Internal.Matrix
+                     , TicTacToe.Internal.Move
+                     , TicTacToe.Internal.Result
                      , TicTacToe
   build-depends:       base >= 4.7 && < 5
                      , containers >= 0.5.6.2

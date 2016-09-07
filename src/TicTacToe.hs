@@ -1,17 +1,7 @@
-module TicTacToe (module Data.TicTacToe) where
+module TicTacToe (module TicTacToe) where
 
-import Data.TicTacToe -- .Domain
-  -- (
-  --   Cell(..)
-  -- , HorizPosition
-  -- , VertPosition
-  -- , CellPosition
-  -- , validCellPositions
-  -- , CellState
-  -- , DisplayInfo
-  -- , Piece
-  -- , MoveInfo
-  -- , Move
-  -- , MoveResult
-  -- , NextValidMoves
-  -- )
+import           TicTacToe.Data.Board as TicTacToe
+import           TicTacToe.Data.Cell  as TicTacToe
+import           TicTacToe.Data.Move  as TicTacToe
+import           TicTacToe.Data.Token as TicTacToe
+import           TicTacToe.Game       as TicTacToe

@@ -1,38 +1,39 @@
 module Main where
 
+import qualified TicTacToe     as T
+
 import           Control.Monad (forM_)
 import           Data.Char     (intToDigit)
 import           Data.List     (intersperse)
 import           System.IO
-import           TicTacToe
 
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  putBoardLn initialDisplayInfo
-  pickMove (initialMoves X) >>= gameLoop
+  putBoardLn T.startingBoard
+  pickMove (T.startingMoves T.X) >>= gameLoop
 
-gameLoop :: Move -> IO ()
-gameLoop (Move _ token displayInfo result) = do
-  putStrLn "" >> putBoardLn displayInfo
+gameLoop :: T.Move -> IO ()
+gameLoop (T.Move _ token newBoard result) = do
+  putStrLn "" >> putBoardLn newBoard
 
   case result of
-    GameTied -> putStrLn "Draw."
-    GameWon -> putStr (show token) >> putStrLn " wins."
-    GameInProgress moves -> pickMove moves >>= gameLoop
+    T.GameTied -> putStrLn "Draw."
+    T.GameWon -> putStr (show token) >> putStrLn " wins."
+    T.GameInProgress moves -> pickMove moves >>= gameLoop
 
-pickMove :: [Move] -> IO Move
+pickMove :: [T.Move] -> IO T.Move
 pickMove moves = do
-  putToken $ getToken (head moves)
+  putToken $ T.getToken (head moves)
   putStr "'s, pick your move: "
 
   moveNumber <- readLn
-  if moveNumber `elem` map getCellPosition moves
-    then return $ head $ filter ((== moveNumber) . getCellPosition) moves
+  if moveNumber `elem` map T.getCellPosition moves
+    then return $ head $ filter ((== moveNumber) . T.getCellPosition) moves
     else putStrLn "Invalid move!" >> pickMove moves
 
-showBoard :: DisplayInfo -> String
-showBoard (DisplayInfo cells) =
+showBoard :: T.Board -> String
+showBoard (T.Board cells) =
     unlines
   . pad
   . interleave "+---+---+---+"
@@ -41,8 +42,8 @@ showBoard (DisplayInfo cells) =
   where
     board = map showCell <$> cells
 
-    showCell (Cell p Empty)          = surround ' ' (show p)
-    showCell (Cell _ (MarkedWith t)) = showToken t
+    showCell (T.Cell p T.Empty)          = surround ' ' (show p)
+    showCell (T.Cell _ (T.MarkedWith t)) = showToken t
 
     surround x xs = x : xs ++ [x]
     interleave x xs = surround x (intersperse x xs)
@@ -50,18 +51,18 @@ showBoard (DisplayInfo cells) =
     pad = map (padding ++)
     padding = replicate 5 ' '
 
-putBoard :: DisplayInfo -> IO ()
+putBoard :: T.Board -> IO ()
 putBoard = putStr . showBoard
 
-putBoardLn :: DisplayInfo -> IO ()
+putBoardLn :: T.Board -> IO ()
 putBoardLn di = putBoard di >> putStrLn ""
 
-showToken :: Token -> String
-showToken X = "XXX"
-showToken O = "OOO"
+showToken :: T.Token -> String
+showToken T.X = "XXX"
+showToken T.O = "OOO"
 
-putToken :: Token -> IO ()
+putToken :: T.Token -> IO ()
 putToken = putStr . showToken
 
-putTokenLn :: Token -> IO ()
+putTokenLn :: T.Token -> IO ()
 putTokenLn p = putToken p >> putStrLn ""
