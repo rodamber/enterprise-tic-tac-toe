@@ -8,30 +8,32 @@ import           TicTacToe
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  gameLoop (firstMove X)
+  putBoardLn initialDisplayInfo
+  pickMove (initialMoves X) >>= gameLoop
 
 gameLoop :: Move -> IO ()
-gameLoop (Move displayInfo result) = do
-  putBoardLn displayInfo >> putStr ""
+gameLoop (Move _ token displayInfo result) = do
+  putStrLn "" >> putBoardLn displayInfo
 
   case result of
     GameTied -> putStrLn "Draw."
-    GameWonBy piece -> putStr (show piece) >> putStrLn " wins."
-    GameInProgress moveInfos -> pickMove moveInfos >>= gameLoop
+    GameWon -> putStr (show token) >> putStrLn " wins."
+    GameInProgress moves -> pickMove moves >>= gameLoop
 
-pickMove :: NextValidMoves -> IO Move
-pickMove moveInfos = do
-  putPiece $ getPiece (head moveInfos)
+pickMove :: [Move] -> IO Move
+pickMove moves = do
+  putToken $ getToken (head moves)
   putStr "'s, pick your move: "
 
   moveNumber <- readLn
-  if 1 <= moveNumber || moveNumber <= length moveInfos
-    then return $ getMove (moveInfos !! (moveNumber - 1))
-    else putStrLn "Invalid move!" >> pickMove moveInfos
+  if 1 <= moveNumber && moveNumber <= length moves
+    then return $ moves !! (moveNumber - 1)
+    else putStrLn "Invalid move!" >> pickMove moves
 
 showBoard :: DisplayInfo -> String
 showBoard (DisplayInfo cells) =
     unlines
+  . pad
   . interleave "+---+---+---+"
   . map (concat . interleave "|")
   $ board
@@ -42,10 +44,13 @@ showBoard (DisplayInfo cells) =
     chunksOf n xs = take n xs : chunksOf n (drop n xs)
 
     showCell i (Cell _ Empty)          = surround ' ' (show i)
-    showCell _ (Cell _ (MarkedWith p)) = showPiece p
+    showCell _ (Cell _ (MarkedWith p)) = showToken p
 
     surround x xs = x : xs ++ [x]
     interleave x xs = surround x (intersperse x xs)
+
+    pad = map (padding ++)
+    padding = replicate 5 ' '
 
 putBoard :: DisplayInfo -> IO ()
 putBoard = putStr . showBoard
@@ -53,12 +58,12 @@ putBoard = putStr . showBoard
 putBoardLn :: DisplayInfo -> IO ()
 putBoardLn di = putBoard di >> putStrLn ""
 
-showPiece :: Piece -> String
-showPiece X = "XXX"
-showPiece O = "OOO"
+showToken :: Token -> String
+showToken X = "XXX"
+showToken O = "OOO"
 
-putPiece :: Piece -> IO ()
-putPiece = putStr . showPiece
+putToken :: Token -> IO ()
+putToken = putStr . showToken
 
-putPieceLn :: Piece -> IO ()
-putPieceLn p = putPiece p >> putStrLn ""
+putTokenLn :: Token -> IO ()
+putTokenLn p = putToken p >> putStrLn ""
