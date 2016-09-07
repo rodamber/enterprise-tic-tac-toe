@@ -1,5 +1,17 @@
 module TicTacToe (module Data.TicTacToe) where
 
-import           Data.TicTacToe (GameState, MoveError (..), Piece (..),
-                                 Result (..), getBoard, getResult,
-                                 initialGameState, makeMove, validPositions)
+import Data.TicTacToe -- .Domain
+  -- (
+  --   Cell(..)
+  -- , HorizPosition
+  -- , VertPosition
+  -- , CellPosition
+  -- , validCellPositions
+  -- , CellState
+  -- , DisplayInfo
+  -- , Piece
+  -- , MoveInfo
+  -- , Move
+  -- , MoveResult
+  -- , NextValidMoves
+  -- )

@@ -1,107 +1,125 @@
 module Data.TicTacToe where
 
-import           Data.Either (isRight)
-import           Data.List   (transpose)
+import           Data.Either               (isRight)
+import           Data.List                 (transpose)
+import qualified Data.Map                  as M
+import           Data.Maybe                (fromJust)
+import           Data.Tuple                (swap)
 
--- | The current game state, which may be ongoing or may be over already.
-data GameState =
-    GameInProcess Piece Board
-    -- ^ Game in process. Has the next piece to be played and the current board.
-  | GameOver Result Board
-    -- ^ Game over. Has the result of the game and the last board state.
-  deriving (Eq, Show)
 
--- | Data type representing the game result which may either be the winner
--- piece or a draw.
-data Result = Winner Piece | Draw deriving (Eq, Show)
+data Cell = Cell {
+    getPosition :: CellPosition
+  , getState    :: CellState
+} deriving (Eq, Ord, Show)
 
--- | The board represented as a collection of Cells.
--- The empty board looks like:
---
---            +---+---+---+
---            | 1 | 2 | 3 |
---            +---+---+---+
---            | 4 | 5 | 6 |
---            +---+---+---+
---            | 7 | 8 | 9 |
---            +---+---+---+
---
--- where each number corresponds to an empty cell.
-newtype Board = Board [[Cell]] deriving (Eq, Show)
+data HorizPosition =
+    HLeft
+  | HCenter
+  | HRight
+  deriving (Eq, Ord, Show)
 
--- | A cell of the board. A cell can be either empty, in which case it is marked
--- with a integer, or marked with one of the pieces.
-type Cell = Either Int Piece
+data VertPosition =
+    VTop
+  | VCenter
+  | VBottom
+  deriving (Eq, Ord, Show)
+
+type CellPosition = (HorizPosition, VertPosition)
+
+validCellPositions :: [CellPosition]
+validCellPositions =
+  [(HLeft, VTop),    (HCenter, VTop),    (HRight, VTop)
+  ,(HLeft, VCenter), (HCenter, VCenter), (HRight, VCenter)
+  ,(HLeft, VBottom), (HCenter, VBottom), (HRight, VBottom)]
+
+data CellState =
+    MarkedWith Piece
+  | Empty
+  deriving (Eq, Ord, Show)
+
+newtype DisplayInfo = DisplayInfo {
+    getCells :: [Cell]
+} deriving (Eq, Ord, Show)
 
 -- | The Piece type. There are only two pieces: the XX and the OO.
-data Piece = X | O deriving (Eq, Show)
+data Piece =
+    X
+  | O
+  deriving (Eq, Ord, Show)
 
--- | Error type for an invalid move.
-data MoveError =
-    InvalidPosition
-  -- ^ Position is already marked, or is not between 1 and 9.
-  | GameIsOver
-  -- ^ The game has already ended.
+data MoveInfo = MoveInfo {
+    getCellPosition :: CellPosition
+  , getPiece        :: Piece
+  , getMove         :: Move
+} deriving (Eq)
+
+data Move = Move {
+    getDisplayInfo :: DisplayInfo
+  , getMoveResult  :: MoveResult
+} deriving (Eq)
+
+data MoveResult =
+    GameInProgress NextValidMoves
+  | GameWonBy Piece
+  | GameTied
+  deriving (Eq)
+
+type NextValidMoves = [MoveInfo]
+
+--------------------------------------------------------------------------------
+
+firstMove :: Piece -> Move
+firstMove piece = mkMove piece initialBoard
+
+initialBoard :: Board_
+initialBoard = Board_ $ (fmap Left) <$> [[1..3]
+                                        ,[4..6]
+                                        ,[7..9]]
+
+newtype Board_ =
+    Board_ [[Either Int Piece]]
   deriving (Eq, Show)
 
--- | Represents a move with possibility of failure. Tries to fill the given
--- position with the piece of the current player. An apropriate error will be
--- returned if the position given is too low, too high or already taken.
-makeMove :: Int
-     -- ^ The position to be marked
-     -> GameState
-     -- ^ The current game state.
-     -> Either MoveError GameState
-     -- ^ Either an error or the new game state with the updated board and the
-     -- piece switched.
-makeMove _ (GameOver _ _) = Left GameIsOver
-makeMove pos gs@(GameInProcess piece (Board board))
-  | pos `notElem` validPositions gs = Left InvalidPosition
-  | otherwise = Right $
-      if isGameOver newBoard
-        then GameOver result newBoard
-        else GameInProcess (switch piece) newBoard
-  where
-    newBoard  = Board $ map replace <$> board
-    replace x = if x == Left pos then Right  piece else x
-    result    = if won newBoard  then Winner piece else Draw
+mkMove :: Piece -> Board_ -> Move
+mkMove p b = Move (mkDisplayInfo b) (mkMoveResult p b)
 
-validPositions :: GameState -> [Int]
-validPositions (GameOver _ _) = []
-validPositions (GameInProcess _ (Board b)) = [x | Left x <- concat b]
+mkDisplayInfo :: Board_ -> DisplayInfo
+mkDisplayInfo (Board_ b) = DisplayInfo $ convert <$> zip (concat b) validCellPositions
+  where convert (Left  x, pos) = Cell pos Empty
+        convert (Right x, pos) = Cell pos (MarkedWith x)
 
--- | Switches the given piece to the opposite piece.
---
--- switch X = O
--- switch O = X
+mkMoveInfo :: Piece -> Board_ -> CellPosition -> MoveInfo
+mkMoveInfo piece board pos = MoveInfo pos piece move
+  where move = mkMove (switch piece) newBoard
+        newBoard   = performMove (toInt pos) piece board
+        toInt pos  = fromJust (M.lookup pos conversion)
+        conversion = M.fromList (zip validCellPositions [1..9])
+
 switch :: Piece -> Piece
 switch X = O
 switch O = X
 
--- | Given a board returns if the game is over or not.
-isGameOver :: Board -> Bool
-isGameOver board@(Board b) = won board || all (all isRight) b
+performMove :: Int -> Piece -> Board_ -> Board_
+performMove pos piece (Board_ b) = Board_ $ map replace <$> b
+  where replace x = if x == Left pos then Right piece else x
 
--- | Given a board returns if we have a winner or not.
-won :: Board -> Bool
-won (Board b) = any full $ rows b ++ columns b ++ diagonals b
-  where
-    full (x:xs) = all (== x) xs
-    rows = id
-    columns = transpose . rows
-    diagonals [[a,_,c]
-              ,[_,d,_]
-              ,[e,_,f]] = [[a,d,f],[c,d,e]]
+mkMoveResult :: Piece -> Board_ -> MoveResult
+mkMoveResult piece board =
+  case mkResult_ board of
+    Tied_       -> GameTied
+    Won_        -> GameWonBy (switch piece)
+    InProgress_ -> GameInProgress $ map (mkMoveInfo piece board) validCellPositions
 
--- | Given a game state, returns the result if the game is over or nothing if not.
-getResult :: GameState -> Maybe Result
-getResult (GameOver r _) = Just r
-getResult _              = Nothing
+data Result_ = Tied_ | Won_ | InProgress_
 
--- | Acessor function that gives the current state of the board.
-getBoard :: GameState -> [[Either Int Piece]]
-getBoard (GameInProcess _ (Board b)) = b
-getBoard (GameOver      _ (Board b)) = b
-
-initialGameState = GameInProcess X emptyBoard
-  where emptyBoard = Board $ map Left <$> [[1..3],[4..6],[7..9]]
+mkResult_ :: Board_ -> Result_
+mkResult_ (Board_ b)
+  | any winner $ rows b ++ columns b ++ diagonals b = Won_
+  | all (all isRight) b = Tied_
+  | otherwise = InProgress_
+  where winner (x:xs) = all (== x) xs
+        rows = id
+        columns = transpose . rows
+        diagonals [[a,_,c]
+                  ,[_,d,_]
+                  ,[e,_,f]] = [[a,d,f],[c,d,e]]

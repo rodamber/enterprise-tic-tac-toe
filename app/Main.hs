@@ -1,41 +1,64 @@
 module Main where
 
-import           Data.Char  (digitToInt)
-import           Data.List  (intercalate, intersperse)
-import           Data.Maybe (fromJust)
-import           System.IO  (BufferMode (NoBuffering), hSetBuffering, stdout)
+import           Control.Monad (forM_)
+import           Data.List     (intersperse)
+import           System.IO
 import           TicTacToe
 
 main :: IO ()
-main = gameLoop initialGameState
-
-gameLoop :: GameState -> IO ()
-gameLoop gs = do
+main = do
   hSetBuffering stdout NoBuffering
-  case getResult gs of
-    Just result -> print result
-    _ -> do
-      printBoard gs
-      putStr "\nMove: "
-      position <- digitToInt <$> getChar
-      _ <- getChar -- eat newline
-      putStrLn ""
+  gameLoop (firstMove X)
 
-      let move = makeMove position gs
+gameLoop :: Move -> IO ()
+gameLoop (Move displayInfo result) = do
+  putBoardLn displayInfo >> putStr ""
 
-      case move of
-        Left InvalidPosition -> do
-          putStrLn $ "Position " ++ show position ++ " is invalid!\n"
-          gameLoop gs
-        Left GameIsOver -> print $ fromJust $ getResult gs
-        Right gs' -> gameLoop gs'
+  case result of
+    GameTied -> putStrLn "Draw."
+    GameWonBy piece -> putStr (show piece) >> putStrLn " wins."
+    GameInProgress moveInfos -> pickMove moveInfos >>= gameLoop
 
-printBoard :: GameState -> IO ()
-printBoard gs =
-  let board = fmap (either show show) <$> getBoard gs
-  in sequence_ $ surround (putStrLn "+---+---+---+") $
-     printRow <$> board
+pickMove :: NextValidMoves -> IO Move
+pickMove moveInfos = do
+  putPiece $ getPiece (head moveInfos)
+  putStr "'s, pick your move: "
+
+  moveNumber <- readLn
+  if 1 <= moveNumber || moveNumber <= length moveInfos
+    then return $ getMove (moveInfos !! (moveNumber - 1))
+    else putStrLn "Invalid move!" >> pickMove moveInfos
+
+showBoard :: DisplayInfo -> String
+showBoard (DisplayInfo cells) =
+    unlines
+  . interleave "+---+---+---+"
+  . map (concat . interleave "|")
+  $ board
   where
-    surround x xs = x : intersperse x xs ++ [x]
-    printRow row = putStrLn $
-      "| " ++ intercalate " | " row ++ " |"
+    board = chunksOf 3 (zipWith showCell [1..9] cells)
+
+    chunksOf _ [] = []
+    chunksOf n xs = take n xs : chunksOf n (drop n xs)
+
+    showCell i (Cell _ Empty)          = surround ' ' (show i)
+    showCell _ (Cell _ (MarkedWith p)) = showPiece p
+
+    surround x xs = x : xs ++ [x]
+    interleave x xs = surround x (intersperse x xs)
+
+putBoard :: DisplayInfo -> IO ()
+putBoard = putStr . showBoard
+
+putBoardLn :: DisplayInfo -> IO ()
+putBoardLn di = putBoard di >> putStrLn ""
+
+showPiece :: Piece -> String
+showPiece X = "XXX"
+showPiece O = "OOO"
+
+putPiece :: Piece -> IO ()
+putPiece = putStr . showPiece
+
+putPieceLn :: Piece -> IO ()
+putPieceLn p = putPiece p >> putStrLn ""
