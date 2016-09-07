@@ -10,7 +10,7 @@ data Move
   , getToken        :: T.Token
   , getBoard        :: B.Board
   , getMoveResult   :: MoveResult
-} deriving (Eq)
+  } deriving (Eq)
 
 data MoveResult
   = GameInProgress NextValidMoves

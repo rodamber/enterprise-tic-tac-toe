@@ -7,7 +7,7 @@ data Cell
   = Cell {
     getPosition :: CellPosition
   , getState    :: CellState
-} deriving (Eq, Ord, Show)
+  } deriving (Eq, Ord, Show)
 
 type CellPosition
   = Int
