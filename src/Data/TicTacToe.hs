@@ -2,7 +2,6 @@ module Data.TicTacToe where
 
 import           Data.Either               (isRight)
 import           Data.List                 (transpose)
-import qualified Data.Map                  as M
 import           Data.Maybe                (fromJust)
 import           Data.Tuple                (swap)
 
@@ -12,23 +11,7 @@ data Cell = Cell {
   , getState    :: CellState
 } deriving (Eq, Ord, Show)
 
-data HorizPosition =
-    HLeft
-  | HCenter
-  | HRight
-  deriving (Eq, Ord, Show)
-
-data VertPosition =
-    VTop
-  | VCenter
-  | VBottom
-  deriving (Eq, Ord, Show)
-
-type CellPosition = (HorizPosition, VertPosition)
-
-validCellPositions :: [CellPosition]
-validCellPositions = [(h,v) | h <- [HLeft, HCenter, HRight]
-                                   , v <- [VTop,  VCenter, VBottom]]
+type CellPosition = Int
 
 data CellState =
     MarkedWith Token
@@ -81,29 +64,17 @@ newtype Board_ =
 
 mkMove :: Token -> Board_ -> Int -> Move
 mkMove token board pos =
-  Move { getCellPosition = intToPosition pos
-       , getToken = token
-       , getDisplayInfo = mkDisplayInfo newBoard
-       , getMoveResult = mkMoveResult token newBoard
-       }
-  where
-    newBoard = performMove pos token board
+  let newBoard = performMove pos token board
+  in Move pos token (mkDisplayInfo newBoard) (mkMoveResult token newBoard)
 
 performMove :: Int -> Token -> Board_ -> Board_
-performMove pos piece (Board_ b) = Board_ $ map replace <$> b
-  where
-    replace x = if x == Left pos then Right piece else x
-
-intToPosition :: Int -> CellPosition
-intToPosition pos = fromJust (M.lookup pos conversion)
-
-conversion :: M.Map Int CellPosition
-conversion = M.fromList (zip [1..9] validCellPositions)
-
+performMove pos piece (Board_ b) =
+  let replace x = if x == Left pos then Right piece else x
+  in Board_ $ map replace <$> b
 
 mkDisplayInfo :: Board_ -> DisplayInfo
 mkDisplayInfo (Board_ b) =
-  DisplayInfo $ convert <$> zip (concat b) validCellPositions
+  DisplayInfo $ convert <$> zip (concat b) [1..9]
   where
     convert (Left  _, pos) = Cell pos Empty
     convert (Right x, pos) = Cell pos (MarkedWith x)
