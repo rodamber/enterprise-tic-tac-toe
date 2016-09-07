@@ -19,7 +19,7 @@ data CellState =
   deriving (Eq, Ord, Show)
 
 newtype DisplayInfo = DisplayInfo {
-    getCells :: [Cell]
+    getBoard :: [[Cell]]
 } deriving (Eq, Ord, Show)
 
 -- | The Token type. There are only two tokens: the XX and the OO.
@@ -58,9 +58,9 @@ initialBoard = Board_ $ map (($ Empty) . Cell) <$> [[1..3]
 
 --------------------------------------------------------------------------------
 
-newtype Board_ =
-    Board_ [[Cell]]
-  deriving (Eq, Show)
+newtype Board_ = Board_ {
+    getCells :: [[Cell]]
+} deriving (Eq, Show)
 
 mkMove :: Token -> Board_ -> Int -> Move
 mkMove token board pos =
@@ -73,7 +73,7 @@ performMove pos token (Board_ b) =
   in Board_ $ map replace <$> b
 
 mkDisplayInfo :: Board_ -> DisplayInfo
-mkDisplayInfo (Board_ b) = DisplayInfo (concat b)
+mkDisplayInfo = DisplayInfo . getCells
 
 
 mkMoveResult :: Token -> Board_ -> MoveResult

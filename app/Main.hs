@@ -1,6 +1,7 @@
 module Main where
 
 import           Control.Monad (forM_)
+import           Data.Char     (intToDigit)
 import           Data.List     (intersperse)
 import           System.IO
 import           TicTacToe
@@ -38,13 +39,10 @@ showBoard (DisplayInfo cells) =
   . map (concat . interleave "|")
   $ board
   where
-    board = chunksOf 3 (zipWith showCell [1..9] cells)
+    board = map showCell <$> cells
 
-    chunksOf _ [] = []
-    chunksOf n xs = take n xs : chunksOf n (drop n xs)
-
-    showCell i (Cell _ Empty)          = surround ' ' (show i)
-    showCell _ (Cell _ (MarkedWith p)) = showToken p
+    showCell (Cell p Empty)          = surround ' ' (show p)
+    showCell (Cell _ (MarkedWith t)) = showToken t
 
     surround x xs = x : xs ++ [x]
     interleave x xs = surround x (intersperse x xs)
