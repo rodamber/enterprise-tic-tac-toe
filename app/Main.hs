@@ -26,8 +26,8 @@ pickMove moves = do
   putStr "'s, pick your move: "
 
   moveNumber <- readLn
-  if 1 <= moveNumber && moveNumber <= length moves
-    then return $ moves !! (moveNumber - 1)
+  if moveNumber `elem` map getCellPosition moves
+    then return $ head $ filter ((== moveNumber) . getCellPosition) moves
     else putStrLn "Invalid move!" >> pickMove moves
 
 showBoard :: DisplayInfo -> String

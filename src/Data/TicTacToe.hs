@@ -2,7 +2,7 @@ module Data.TicTacToe where
 
 import           Data.Either               (isRight)
 import           Data.List                 (transpose)
-import           Data.Maybe                (fromJust)
+import           Data.Maybe                (isJust)
 import           Data.Tuple                (swap)
 
 
@@ -49,17 +49,17 @@ initialDisplayInfo :: DisplayInfo
 initialDisplayInfo = mkDisplayInfo initialBoard
 
 initialMoves :: Token -> [Move]
-initialMoves piece = map (mkMove piece initialBoard) [1..9]
+initialMoves token = map (mkMove token initialBoard) [1..9]
 
 initialBoard :: Board_
-initialBoard = Board_ $ fmap Left <$> [[1..3]
-                                      ,[4..6]
-                                      ,[7..9]]
+initialBoard = Board_ $ map (($ Empty) . Cell) <$> [[1..3]
+                                                   ,[4..6]
+                                                   ,[7..9]]
 
 --------------------------------------------------------------------------------
 
 newtype Board_ =
-    Board_ [[Either Int Token]]
+    Board_ [[Cell]]
   deriving (Eq, Show)
 
 mkMove :: Token -> Board_ -> Int -> Move
@@ -68,44 +68,48 @@ mkMove token board pos =
   in Move pos token (mkDisplayInfo newBoard) (mkMoveResult token newBoard)
 
 performMove :: Int -> Token -> Board_ -> Board_
-performMove pos piece (Board_ b) =
-  let replace x = if x == Left pos then Right piece else x
+performMove pos token (Board_ b) =
+  let replace x = if getPosition x == pos then Cell pos (MarkedWith token) else x
   in Board_ $ map replace <$> b
 
 mkDisplayInfo :: Board_ -> DisplayInfo
-mkDisplayInfo (Board_ b) =
-  DisplayInfo $ convert <$> zip (concat b) [1..9]
-  where
-    convert (Left  _, pos) = Cell pos Empty
-    convert (Right x, pos) = Cell pos (MarkedWith x)
+mkDisplayInfo (Board_ b) = DisplayInfo (concat b)
 
 
 mkMoveResult :: Token -> Board_ -> MoveResult
-mkMoveResult piece board =
+mkMoveResult token board =
   case mkResult_ board of
     Tied_       -> GameTied
     Won_        -> GameWon
     InProgress_ ->
-      GameInProgress $ map (mkMove (switch piece) board) (emptyPositions board)
+      GameInProgress $ map (mkMove (switch token) board) (emptyPositions board)
 
 data Result_ = Tied_ | Won_ | InProgress_
 
 mkResult_ :: Board_ -> Result_
 mkResult_ (Board_ b)
   | any winner $ rows b ++ columns b ++ diagonals b = Won_
-  | all (all isRight) b = Tied_
+  | all (all isMarked) b = Tied_
   | otherwise = InProgress_
   where
-    winner (x:xs) = all (== x) xs
+    winner (x:xs) = all ((&&) <$> (== markOf x) <*> isJust) (map markOf xs)
     rows = id
     columns = transpose . rows
     diagonals [[a,_,c]
               ,[_,d,_]
               ,[e,_,f]] = [[a,d,f],[c,d,e]]
 
+isMarked :: Cell -> Bool
+isMarked (Cell _ (MarkedWith _)) = True
+isMarked _                       = False
+
+markOf :: Cell -> Maybe Token
+markOf (Cell _ Empty)          = Nothing
+markOf (Cell _ (MarkedWith x)) = Just x
+
 switch :: Token -> Token
 switch X = O
 switch O = X
 
 emptyPositions :: Board_ -> [Int]
-emptyPositions (Board_ b) = [x | Left x <- concat b]
+emptyPositions (Board_ b) = [x | (Cell x Empty) <- concat b]
